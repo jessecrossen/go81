@@ -26,7 +26,7 @@ func (c *Card) Render(f *Frame) {
 	// TODO
 	shrink, turn := c.normalizedShrinkAndTurn()
 	if shrink == 0 {
-		if turn <= 1 || turn >= 9 {
+		if turn <= 1 || turn >= 7 {
 			f.Draw(c.renderFace(), c.col+2, c.row+1, c.faceColor(), ColorDefault)
 		} else if turn >= 3 && turn <= 5 {
 			f.Draw(c.renderBack(), c.col+2, c.row+1, ColorDefault, ColorDefault)
