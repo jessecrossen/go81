@@ -2,11 +2,12 @@ package main
 
 // A Card describes one card in a deck of cards.
 type Card struct {
-	id     int   // which card this is, coded from 0 to 80
-	col    coord // the column to render the left edge of the card at
-	row    coord // the row to render the top edge of the card at
-	turn   int   // vary this to animate the card flipping over (0 to 8)
-	shrink int   // vary this to animate the card shrinking (0 to 5)
+	id       int   // which card this is, coded from 0 to 80
+	col      coord // the column to render the left edge of the card at
+	row      coord // the row to render the top edge of the card at
+	turn     int   // vary this to animate the card flipping over (0 to 8)
+	shrink   int   // vary this to animate the card shrinking (0 to 5)
+	selected bool  // whether the card has been selected by the user
 }
 
 // Attributes returns the categories the card is a member of.
@@ -18,18 +19,35 @@ func (c *Card) Attributes() (count, shape, fill, clr int) {
 	return
 }
 
+// A Deck stores a complete deck of cards.
+type Deck struct {
+	cards [81]Card
+}
+
+// NewDeck creates a complete deck of cards.
+func NewDeck() Deck {
+	d := Deck{}
+	for id := 0; id < len(d.cards); id++ {
+		d.cards[id].id = id
+	}
+	return d
+}
+
 // RENDERING *****************************************************************
 
 // Render the card into the given frame buffer.
 func (c *Card) Render(f *Frame) {
-	f.Draw(c.renderOutline(), c.col, c.row, ColorDefault, ColorDefault)
-	// TODO
+	outlineColor := ColorLightGray
+	if c.selected {
+		outlineColor = ColorLightCyan
+	}
+	f.Draw(c.renderOutline(), c.col, c.row, outlineColor, ColorDefault)
 	shrink, turn := c.normalizedShrinkAndTurn()
 	if shrink == 0 {
 		if turn <= 1 || turn >= 7 {
 			f.Draw(c.renderFace(), c.col+2, c.row+1, c.faceColor(), ColorDefault)
 		} else if turn >= 3 && turn <= 5 {
-			f.Draw(c.renderBack(), c.col+2, c.row+1, ColorDefault, ColorDefault)
+			f.Draw(c.renderBack(), c.col+2, c.row+1, outlineColor, ColorDefault)
 		}
 	}
 }

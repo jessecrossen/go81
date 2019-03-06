@@ -8,57 +8,35 @@ import (
 	"time"
 )
 
-func cardDemo() {
-	// c = Card{}
-	// for {
-
-	// }
-}
-
 func main() {
 	disableLineBuffering()
 	disableEcho()
 	defer enableEcho()
-
+	// make a new game
+	game := NewGame()
+	// make channels that update the game
 	input := getInput()
 	frames := getFrames()
-
-	card := Card{}
-
+	// start the interactive loop
 	lastFrame := NewFrame()
+	needsRender := true
 	for {
 		select {
 		case c := <-input:
-			switch c {
-			case 'A':
-				card.turn++
-			case 'B':
-				card.turn = max(0, card.turn-1)
-			case 'D':
-				card.shrink = min(card.shrink+1, 5)
-			case 'C':
-				card.shrink = max(0, card.shrink-1)
-			case ' ':
-				card.id++
+			needsRender = game.Input(c) || needsRender
+			if c == 'q' {
+				return
 			}
 		case _ = <-frames:
-			f := NewFrame()
-			card.Render(&f)
-			fmt.Print(f.Replace(lastFrame))
-			lastFrame = f
+			if needsRender {
+				f := NewFrame()
+				game.Render(&f)
+				fmt.Print(f.Replace(lastFrame))
+				lastFrame = f
+				needsRender = false
+			}
 		}
 	}
-}
-
-// from: https://stackoverflow.com/a/17278730/745831
-func disableLineBuffering() {
-	exec.Command("stty", "-F", "/dev/tty", "cbreak", "min", "1").Run()
-}
-func disableEcho() {
-	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
-}
-func enableEcho() {
-	exec.Command("stty", "-F", "/dev/tty", "echo").Run()
 }
 
 func getInput() <-chan rune {
@@ -86,4 +64,15 @@ func getFrames() <-chan int {
 		}
 	}()
 	return frames
+}
+
+// from: https://stackoverflow.com/a/17278730/745831
+func disableLineBuffering() {
+	exec.Command("stty", "-F", "/dev/tty", "cbreak", "min", "1").Run()
+}
+func disableEcho() {
+	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+}
+func enableEcho() {
+	exec.Command("stty", "-F", "/dev/tty", "echo").Run()
 }
