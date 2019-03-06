@@ -16,13 +16,16 @@ const maxRows coord = 40
 
 // A Frame represents a block of text to render to the terminal.
 type Frame struct {
-	Lines  [][]rune
-	Colors [][]string
+	lines  [][]rune
+	colors [][]string
 }
 
-// EmptyFrame returns a Frame struct with no content.
-func EmptyFrame() Frame {
-	return Frame{make([][]rune, 0, maxRows), make([][]string, 0, maxRows)}
+// NewFrame returns a Frame struct with no content.
+func NewFrame() Frame {
+	return Frame{
+		lines:  make([][]rune, 0, maxRows),
+		colors: make([][]string, 0, maxRows),
+	}
 }
 
 // Draw a set of newline-delimited lines to the given coordinates in the frame.
@@ -32,11 +35,11 @@ func (f *Frame) Draw(text string, col coord, row coord, fg color, bg color) {
 	for i, drawLine := range drawLines {
 		drawRunes := []rune(drawLine)
 		lineIndex := row + i
-		if lineIndex < cap(f.Lines) {
-			f.Lines[lineIndex] = insertStringInLine(f.Lines[lineIndex], drawRunes, col)
+		if lineIndex < cap(f.lines) {
+			f.lines[lineIndex] = insertStringInLine(f.lines[lineIndex], drawRunes, col)
 		}
-		if lineIndex < cap(f.Colors) {
-			f.Colors[lineIndex] = insertColorInLine(f.Colors[lineIndex],
+		if lineIndex < cap(f.colors) {
+			f.colors[lineIndex] = insertColorInLine(f.colors[lineIndex],
 				changeColor(fg, bg), col, len(drawRunes))
 		}
 	}
@@ -45,7 +48,7 @@ func (f *Frame) Draw(text string, col coord, row coord, fg color, bg color) {
 // Render a frame to a string that can be written to the terminal.
 func (f *Frame) Render() string {
 	b := strings.Builder{}
-	for i := 0; i < len(f.Lines); i++ {
+	for i := 0; i < len(f.lines); i++ {
 		b.WriteString(clearLine)
 		f.renderLine(&b, i)
 		b.WriteString(nextLine)
@@ -55,7 +58,7 @@ func (f *Frame) Render() string {
 
 // Reset returns a string that will restore the cursor after rendering a frame.
 func (f *Frame) Reset() string {
-	return cursorUp(len(f.Lines))
+	return cursorUp(len(f.lines))
 }
 
 // Replace returns a string that will replace the given frame with the receiver.
@@ -63,7 +66,7 @@ func (f *Frame) Replace(old Frame) string {
 	b := strings.Builder{}
 	b.WriteString(old.Reset())
 	b.WriteString(f.Render())
-	extraLines := len(old.Lines) - len(f.Lines)
+	extraLines := len(old.lines) - len(f.lines)
 	if extraLines > 0 {
 		for i := 0; i < extraLines; i++ {
 			b.WriteString(clearLine)
@@ -99,11 +102,11 @@ const (
 
 // make sure a frame has at least the given number of rows
 func (f *Frame) ensureRowCount(rows coord) {
-	for i := len(f.Lines); i < min(rows, cap(f.Lines)); i++ {
-		f.Lines = append(f.Lines, make([]rune, 0))
+	for i := len(f.lines); i < min(rows, cap(f.lines)); i++ {
+		f.lines = append(f.lines, make([]rune, 0))
 	}
-	for i := len(f.Colors); i < min(rows, cap(f.Colors)); i++ {
-		f.Colors = append(f.Colors, make([]string, 0))
+	for i := len(f.colors); i < min(rows, cap(f.colors)); i++ {
+		f.colors = append(f.colors, make([]string, 0))
 	}
 }
 
@@ -148,15 +151,15 @@ func insertColorInLine(line []string, color string, col coord, width coord) []st
 
 // render a line, inserting color changes where needed
 func (f *Frame) renderLine(b *strings.Builder, row coord) {
-	if row >= len(f.Lines) {
+	if row >= len(f.lines) {
 		return
 	}
-	line := f.Lines[row]
-	if row >= len(f.Colors) {
+	line := f.lines[row]
+	if row >= len(f.colors) {
 		b.WriteString(string(line))
 		return
 	}
-	colors := f.Colors[row]
+	colors := f.colors[row]
 	lastColor := ""
 	lastIndex := 0
 	minLen := min(len(colors), len(line))
@@ -181,25 +184,13 @@ const clearLine = escape + "[2K"
 const nextLine = "\n"
 
 func cursorUp(lines int) string {
+	if lines == 0 {
+		return ""
+	}
 	return fmt.Sprintf("%s[%dA", escape, lines)
 }
 
 func changeColor(fg, bg color) string {
 	// return fmt.Sprintf("%s[%dm%s[%dm", escape, 39+fg, escape, 49+bg)
 	return fmt.Sprintf("%s[%d;%dm", escape, 30+fg, 40+bg)
-}
-
-// utility functions
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
