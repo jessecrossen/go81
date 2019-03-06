@@ -88,14 +88,14 @@ const (
 	ColorCyan         color = 6
 	ColorLightGray    color = 7
 	ColorDefault      color = 9
-	ColorDarkGray     color = 61
-	ColorLightRed     color = 62
-	ColorLightGreen   color = 63
-	ColorLightYellow  color = 64
-	ColorLightBlue    color = 65
-	ColorLightMagenta color = 66
-	ColorLightCyan    color = 67
-	ColorWhite        color = 68
+	ColorDarkGray     color = 60
+	ColorLightRed     color = 61
+	ColorLightGreen   color = 62
+	ColorLightYellow  color = 63
+	ColorLightBlue    color = 64
+	ColorLightMagenta color = 65
+	ColorLightCyan    color = 66
+	ColorWhite        color = 67
 )
 
 // IMPLEMENTATION *************************************************************

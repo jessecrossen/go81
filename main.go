@@ -33,11 +33,13 @@ func main() {
 			case 'A':
 				card.turn++
 			case 'B':
-				card.turn--
+				card.turn = max(0, card.turn-1)
 			case 'D':
 				card.shrink = min(card.shrink+1, 5)
 			case 'C':
 				card.shrink = max(0, card.shrink-1)
+			case ' ':
+				card.id++
 			}
 		case _ = <-frames:
 			f := NewFrame()
