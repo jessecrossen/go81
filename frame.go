@@ -63,9 +63,13 @@ func (f *Frame) Replace(old Frame) string {
 	b := strings.Builder{}
 	b.WriteString(old.Reset())
 	b.WriteString(f.Render())
-	for i := len(f.Lines); i < len(old.Lines); i++ {
-		b.WriteString(clearLine)
-		b.WriteString(nextLine)
+	extraLines := len(old.Lines) - len(f.Lines)
+	if extraLines > 0 {
+		for i := 0; i < extraLines; i++ {
+			b.WriteString(clearLine)
+			b.WriteString(nextLine)
+		}
+		b.WriteString(cursorUp(extraLines))
 	}
 	return b.String()
 }
