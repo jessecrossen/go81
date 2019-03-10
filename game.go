@@ -5,9 +5,6 @@ import (
 	"math/rand"
 )
 
-// maximum cards dealt onto the table at one time
-const tableSize = 21
-
 // Game stores the complete state of a game in progress.
 type Game struct {
 	deck        Deck             // all cards in the game
@@ -32,30 +29,33 @@ func NewGame() *Game {
 
 // Input updates the game state based on an input character and return whether anything changed.
 func (g *Game) Input(c rune) {
-	card := &g.deck[0]
-	switch c {
-	case 'A':
-		card.turn++
-	case 'B':
-		card.turn = max(0, card.turn-1)
-	case 'D':
-		card.shrink = min(card.shrink+1, 5)
-	case 'C':
-		card.shrink = max(0, card.shrink-1)
-	case ' ':
-		card.id++
-	case 's':
-		card.selected = !card.selected
-	default:
-		return
+	tableIndex := -1
+	if (c >= 'a') && (c < 'a'+tableSize) {
+		tableIndex = int(c - 'a')
+	} else if (c >= 'A') && (c < 'A'+tableSize) {
+		tableIndex = int(c - 'A')
 	}
-	g.needsRender = true
+	if tableIndex >= 0 {
+		card := g.table[tableIndex]
+		if card != nil && card.layer == LayerDealt {
+			card.selected = !card.selected
+			g.needsRender = true
+			return
+		}
+	}
 }
 
 // Render the current game state to a frame buffer.
 func (g *Game) Render() Frame {
 	f := NewFrame()
-	// draw cards in layers from back to front
+	g.renderLetters(&f)
+	g.renderCards(&f)
+	g.renderScore(&f)
+	return f
+}
+
+// draw cards in layers from back to front
+func (g *Game) renderCards(f *Frame) {
 	cardsTotal := len(g.deck)
 	cardsFound := 0
 	layer := 0
@@ -65,7 +65,7 @@ func (g *Game) Render() Frame {
 			if card.layer == layer {
 				cardsFound++
 				if layer > 0 {
-					card.Render(&f)
+					card.Render(f)
 				}
 			}
 		}
@@ -75,10 +75,26 @@ func (g *Game) Render() Frame {
 			break
 		}
 	}
-	// draw the current score
-	f.Draw(fmt.Sprintf("Score: %d", g.score), 1, (CardHeight*3)+1,
-		ColorDefault, ColorDefault)
-	return f
+}
+
+// draw letters marking each card position
+func (g *Game) renderLetters(f *Frame) {
+	for i, card := range g.table {
+		if card != nil && card.layer == LayerDealt {
+			color := ColorDarkGray
+			if card.selected {
+				color = ColorCyan
+			}
+			col, row := letterCoords(i)
+			f.Draw(fmt.Sprintf("%c", 'A'+i), col, row, color, ColorDefault)
+		}
+	}
+}
+
+// render the player's current score
+func (g *Game) renderScore(f *Frame) {
+	col, row := scoreCoords()
+	f.Draw(fmt.Sprintf("Score: %d", g.score), col, row, ColorDefault, ColorDefault)
 }
 
 // Update the game state and render to the given display if needed.
@@ -94,14 +110,34 @@ func (g *Game) Update(display chan<- Frame) {
 	}
 }
 
-// TABLE OPERATIONS ***********************************************************
+// LAYOUT *********************************************************************
+
+// maximum cards dealt onto the table at one time
+const tableSize = 21
 
 // get the card coordinates for the given index in the table
 func tableCoords(i int) (col coord, row coord) {
 	row = (i % 3) * CardHeight
-	col = (i / 3) * CardWidth
+	col = 1 + ((i / 3) * (CardWidth + 2))
 	return
 }
+
+// the coords of the letter marking the given index in the table
+func letterCoords(i int) (col coord, row coord) {
+	col, row = tableCoords(i)
+	col += CardWidth
+	row += CardHeight / 2
+	return
+}
+
+// get the coordinates for the score display
+func scoreCoords() (col coord, row coord) {
+	col = 1
+	row = (CardHeight * 3) + 1
+	return
+}
+
+// TABLE OPERATIONS ***********************************************************
 
 // number of frames it takes to deal or remove a card
 const dealSteps = 5
@@ -119,22 +155,23 @@ func (g *Game) dealAnimation(card *Card) *Animation {
 	g.table[tableIndex] = card
 	col, row := tableCoords(tableIndex)
 	// ensure the card is invisible but not dealt twice
-	card.layer = -1
+	card.layer = LayerToDeal
 	return &Animation{
 		action: func(step int) bool {
 			if step == 0 {
+				card.selected = false
 				card.col = 0
 				card.row = 0
 				card.shrink = MaxShrink
 				card.turn = BackTurn
-				card.layer = 2
+				card.layer = LayerDealing
 			}
 			p := float32(step) / dealSteps
 			card.shrink = int(float32(MaxShrink) * (1.0 - p))
 			card.col = int(float32(col) * p)
 			card.row = int(float32(row) * p)
 			if step >= dealSteps {
-				card.layer = 1
+				card.layer = LayerDealt
 				return false
 			}
 			return true
@@ -148,7 +185,7 @@ func (g *Game) pickCard() *Card {
 	for tries := 0; tries <= 1000; tries++ {
 		i := g.random.Int63() % int64(len(g.deck))
 		card := &g.deck[i]
-		if card.layer == 0 {
+		if card.layer == LayerNotDealt {
 			return card
 		}
 	}
@@ -156,10 +193,7 @@ func (g *Game) pickCard() *Card {
 }
 
 // deal a number of random cards onto the table
-func (g *Game) dealRandom(count int) {
-	if !(count > 0) {
-		return
-	}
+func (g *Game) dealRandom(count int) *Animation {
 	var firstAnimation *Animation
 	var lastAnimation *Animation
 	for i := 0; i < count; i++ {
@@ -179,6 +213,8 @@ func (g *Game) dealRandom(count int) {
 		},
 	}
 	g.animator.Animate(*firstAnimation)
+	// return the final animation for chaining
+	return lastAnimation
 }
 
 // animate flipping the given card over to reveal its front
