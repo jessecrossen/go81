@@ -23,7 +23,7 @@ func NewGame() *Game {
 		needsRender: true,
 		random:      rand.NewSource(0),
 	}
-	g.dealRandom(12)
+	g.tidyTable()
 	return &g
 }
 
@@ -301,6 +301,8 @@ func (g *Game) tidyTable() {
 	if dealt < 12 {
 		g.dealRandom(12 - dealt)
 	}
+	// TODO: check for caps
+	// TODO: consolidate cards
 }
 
 // count cards on the table
