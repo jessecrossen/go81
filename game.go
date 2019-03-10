@@ -29,6 +29,7 @@ func NewGame() *Game {
 
 // Input updates the game state based on an input character and return whether anything changed.
 func (g *Game) Input(c rune) {
+	// toggle cards
 	tableIndex := -1
 	if (c >= 'a') && (c < 'a'+tableSize) {
 		tableIndex = int(c - 'a')
@@ -40,6 +41,10 @@ func (g *Game) Input(c rune) {
 		if card != nil && card.layer == LayerDealt {
 			card.selected = !card.selected
 			g.needsRender = true
+			// check for a set
+			if card.selected {
+				g.checkForSet()
+			}
 			return
 		}
 	}
@@ -139,8 +144,11 @@ func scoreCoords() (col coord, row coord) {
 
 // TABLE OPERATIONS ***********************************************************
 
-// number of frames it takes to deal or remove a card
-const dealSteps = 5
+// number of frames it takes to deal a card
+const dealSteps = MaxShrink
+
+// number of frames it takes to collect a card
+const collectSteps = MaxShrink
 
 // animate dealing a card from the top left corner
 func (g *Game) dealAnimation(card *Card) *Animation {
@@ -172,6 +180,26 @@ func (g *Game) dealAnimation(card *Card) *Animation {
 			card.row = int(float32(row) * p)
 			if step >= dealSteps {
 				card.layer = LayerDealt
+				return false
+			}
+			return true
+		},
+	}
+}
+
+// animate a card being collected to the given location
+func collectAnimation(card *Card, col int, row int) *Animation {
+	card.layer = LayerCollecting
+	startCol := card.col
+	startRow := card.row
+	return &Animation{
+		action: func(step int) bool {
+			p := float32(step) / collectSteps
+			card.shrink = int(float32(MaxShrink) * p)
+			card.col = startCol + int(float32(col-startCol)*p)
+			card.row = startRow + int(float32(row-startRow)*p)
+			if step >= collectSteps {
+				card.layer = LayerNotDealt
 				return false
 			}
 			return true
@@ -236,10 +264,93 @@ func revealAnimation(card *Card) *Animation {
 
 // reveal all cards on the table
 func (g *Game) revealAll() {
-	for i := range g.table {
-		card := g.table[i]
+	for _, card := range g.table {
 		if (card != nil) && (card.turn != FrontTurn) {
 			g.animator.Animate(*revealAnimation(card))
 		}
 	}
+}
+
+// check to see whether the user has selected a set
+func (g *Game) checkForSet() {
+	// check if three cards are selected
+	selected := g.selectedCards()
+	if len(selected) == 3 {
+		if areSet(selected[0], selected[1], selected[2]) {
+			// the cards are a set, add to the score
+			col, row := scoreCoords()
+			for _, card := range selected {
+				g.removeCardFromTable(card)
+				g.animator.Animate(*collectAnimation(card, col, row))
+			}
+			g.score++
+			g.tidyTable()
+		} else {
+			// the cards are not a set, subtract from the score
+			g.score--
+			for _, card := range selected {
+				card.selected = false
+			}
+		}
+	}
+}
+
+// deal and consolidate cards
+func (g *Game) tidyTable() {
+	dealt := g.countCardsDealt()
+	if dealt < 12 {
+		g.dealRandom(12 - dealt)
+	}
+}
+
+// count cards on the table
+func (g *Game) countCardsDealt() int {
+	count := 0
+	for _, card := range g.table {
+		if (card != nil) && (card.layer == LayerDealt) {
+			count++
+		}
+	}
+	return count
+}
+
+// remove a card from the table
+func (g *Game) removeCardFromTable(removeCard *Card) {
+	for i, card := range g.table {
+		if card == removeCard {
+			g.table[i] = nil
+		}
+	}
+}
+
+// get all selected cards
+func (g *Game) selectedCards() []*Card {
+	selected := make([]*Card, 0, len(g.table))
+	for _, card := range g.table {
+		if (card != nil) && (card.selected) {
+			selected = append(selected, card)
+		}
+	}
+	return selected
+}
+
+// return whether three cards form make a set
+func areSet(a, b, c *Card) bool {
+	a1, a2, a3, a4 := a.Attributes()
+	b1, b2, b3, b4 := b.Attributes()
+	c1, c2, c3, c4 := c.Attributes()
+	return (true &&
+		areSameOrDifferent(a1, b1, c1) &&
+		areSameOrDifferent(a2, b2, c2) &&
+		areSameOrDifferent(a3, b3, c3) &&
+		areSameOrDifferent(a4, b4, c4))
+}
+func areSameOrDifferent(a, b, c int) bool {
+	return areSame(a, b, c) || areDifferent(a, b, c)
+}
+func areSame(a, b, c int) bool {
+	return (a == b) && (b == c)
+}
+func areDifferent(a, b, c int) bool {
+	return (a != b) && (b != c) && (a != c)
 }

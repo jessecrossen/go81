@@ -13,10 +13,11 @@ type Card struct {
 
 // Possible values for the layer property of a card.
 const (
-	LayerToDeal   = -1
-	LayerNotDealt = 0
-	LayerDealt    = 1
-	LayerDealing  = 2
+	LayerToDeal     = -1
+	LayerNotDealt   = 0
+	LayerDealt      = 1
+	LayerCollecting = 2
+	LayerDealing    = 3
 )
 
 // MaxShrink is the maximum value of the shrink property of a card.
