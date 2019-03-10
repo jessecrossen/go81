@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"os/exec"
 	"time"
@@ -15,10 +14,10 @@ func main() {
 	// make a new game
 	game := NewGame()
 	// make channels that update the game
-	input := getInput()
-	frames := getFrames()
+	input := newInput()
+	timer := newTimer()
+	display := NewDisplay()
 	// start the interactive loop
-	lastFrame := NewFrame()
 	needsRender := true
 	for {
 		select {
@@ -27,19 +26,16 @@ func main() {
 			if c == 'q' {
 				return
 			}
-		case _ = <-frames:
+		case _ = <-timer:
 			if needsRender {
-				f := NewFrame()
-				game.Render(&f)
-				fmt.Print(f.Replace(lastFrame))
-				lastFrame = f
+				display <- game.Render()
 				needsRender = false
 			}
 		}
 	}
 }
 
-func getInput() <-chan rune {
+func newInput() <-chan rune {
 	input := make(chan rune)
 	go func() {
 		reader := bufio.NewReader(os.Stdin)
@@ -53,17 +49,17 @@ func getInput() <-chan rune {
 	return input
 }
 
-func getFrames() <-chan int {
-	frames := make(chan int)
+func newTimer() <-chan int {
+	times := make(chan int)
 	go func() {
 		counter := 0
 		for {
-			frames <- counter
+			times <- counter
 			counter++
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()
-	return frames
+	return times
 }
 
 // from: https://stackoverflow.com/a/17278730/745831

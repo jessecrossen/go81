@@ -35,6 +35,8 @@ func (g *Game) Input(c rune) bool {
 }
 
 // Render the current game state to a frame buffer.
-func (g *Game) Render(f *Frame) {
-	g.deck.cards[0].Render(f)
+func (g *Game) Render() Frame {
+	f := NewFrame()
+	g.deck.cards[0].Render(&f)
+	return f
 }

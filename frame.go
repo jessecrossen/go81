@@ -45,6 +45,19 @@ func (f *Frame) Draw(text string, col coord, row coord, fg color, bg color) {
 	}
 }
 
+// NewDisplay returns a channel which accepts frames and sends them to the terminal.
+func NewDisplay() chan<- Frame {
+	display := make(chan Frame)
+	go func() {
+		lastFrame := NewFrame()
+		for thisFrame := range display {
+			fmt.Print(thisFrame.Replace(lastFrame))
+			lastFrame = thisFrame
+		}
+	}()
+	return display
+}
+
 // Render a frame to a string that can be written to the terminal.
 func (f *Frame) Render() string {
 	b := strings.Builder{}
