@@ -18,19 +18,15 @@ func main() {
 	timer := newTimer()
 	display := NewDisplay()
 	// start the interactive loop
-	needsRender := true
 	for {
 		select {
 		case c := <-input:
-			needsRender = game.Input(c) || needsRender
+			game.Input(c)
 			if c == 'q' {
 				return
 			}
 		case _ = <-timer:
-			if needsRender {
-				display <- game.Render()
-				needsRender = false
-			}
+			game.Update(display)
 		}
 	}
 }
@@ -56,7 +52,7 @@ func newTimer() <-chan int {
 		for {
 			times <- counter
 			counter++
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 		}
 	}()
 	return times

@@ -8,7 +8,17 @@ type Card struct {
 	turn     int   // vary this to animate the card flipping over (0 to 8)
 	shrink   int   // vary this to animate the card shrinking (0 to 5)
 	selected bool  // whether the card has been selected by the user
+	layer    int   // z-index of the card, where layers 0 or lower are never drawn
 }
+
+// MaxShrink is the maximum value of the shrink property of a card.
+const MaxShrink = 5
+
+// FrontTurn is the value of a card's turn property that shows the front.
+const FrontTurn = 0
+
+// BackTurn is the value of a card's turn property that shows the back.
+const BackTurn = 4
 
 // Attributes returns the categories the card is a member of.
 func (c *Card) Attributes() (count, shape, fill, clr int) {
@@ -20,20 +30,24 @@ func (c *Card) Attributes() (count, shape, fill, clr int) {
 }
 
 // A Deck stores a complete deck of cards.
-type Deck struct {
-	cards [81]Card
-}
+type Deck = [81]Card
 
 // NewDeck creates a complete deck of cards.
 func NewDeck() Deck {
-	d := Deck{}
-	for id := 0; id < len(d.cards); id++ {
-		d.cards[id].id = id
+	var d Deck
+	for id := 0; id < len(d); id++ {
+		d[id].id = id
 	}
 	return d
 }
 
 // RENDERING *****************************************************************
+
+// CardWidth is the width of a rendered card in characters.
+const CardWidth = 5
+
+// CardHeight is the height of a rendered card in lines.
+const CardHeight = 5
 
 // Render the card into the given frame buffer.
 func (c *Card) Render(f *Frame) {
